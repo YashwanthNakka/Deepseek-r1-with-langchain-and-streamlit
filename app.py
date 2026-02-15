@@ -1,13 +1,9 @@
 import streamlit as st
 from langchain_ollama import ChatOllama
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from langchain_core.prompts import ChatPromptTemplate
 
-from langchain_core.prompts import (
-    SystemMessagePromptTemplate,
-    HumanMessagePromptTemplate,
-    AIMessagePromptTemplate,
-    ChatPromptTemplate
-)
 # Custom CSS styling
 st.markdown("""
 <style>
@@ -45,11 +41,12 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
 st.title("🧠 DeepSeek Code Companion Built by Yashwanth Nakka")
 st.caption("🚀 Your AI Pair Programmer with Debugging Superpowers")
 st.caption("Build with Love")
 
-# Sidebar configuraby Yashwanth Nakkation
+# Sidebar configuration
 with st.sidebar:
     st.header("⚙️ Configuration")
     selected_model = st.selectbox(
@@ -69,20 +66,17 @@ with st.sidebar:
     st.markdown("Built with [Ollama](https://ollama.ai/) | [LangChain](https://python.langchain.com/)")
 
 
-# initiate the chat engine
-
-llm_engine=ChatOllama(
+# Initiate the chat engine
+llm_engine = ChatOllama(
     model=selected_model,
     base_url="http://localhost:11434",
-    # Set temperature here.
     temperature=0.3
-
 )
 
 # System prompt configuration
-system_prompt = SystemMessagePromptTemplate.from_template(
-    "You are an expert AI coding assistant. Provide concise, correct solutions "
-    "with strategic print statements for debugging. Always respond in English."
+system_message = SystemMessage(
+    content="You are an expert AI coding assistant. Provide concise, correct solutions "
+            "with strategic print statements for debugging. Always respond in English."
 )
 
 # Session state management
@@ -101,18 +95,18 @@ with chat_container:
 # Chat input and processing
 user_query = st.chat_input("Type your coding question here...")
 
-def generate_ai_response(prompt_chain):
-    processing_pipeline=prompt_chain | llm_engine | StrOutputParser()
-    return processing_pipeline.invoke({})
+def generate_ai_response(messages):
+    processing_pipeline = llm_engine | StrOutputParser()
+    return processing_pipeline.invoke(messages)
 
-def build_prompt_chain():
-    prompt_sequence = [system_prompt]
+def build_message_list():
+    messages = [system_message]
     for msg in st.session_state.message_log:
         if msg["role"] == "user":
-            prompt_sequence.append(HumanMessagePromptTemplate.from_template(msg["content"]))
+            messages.append(HumanMessage(content=msg["content"]))
         elif msg["role"] == "ai":
-            prompt_sequence.append(AIMessagePromptTemplate.from_template(msg["content"]))
-    return ChatPromptTemplate.from_messages(prompt_sequence)
+            messages.append(AIMessage(content=msg["content"]))
+    return messages
 
 if user_query:
     # Add user message to log
@@ -120,8 +114,8 @@ if user_query:
     
     # Generate AI response
     with st.spinner("🧠 Processing..."):
-        prompt_chain = build_prompt_chain()
-        ai_response = generate_ai_response(prompt_chain)
+        messages = build_message_list()
+        ai_response = generate_ai_response(messages)
     
     # Add AI response to log
     st.session_state.message_log.append({"role": "ai", "content": ai_response})
